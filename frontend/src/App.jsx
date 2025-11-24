@@ -1,164 +1,133 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
+import Chat from "./Chat";
+import Historico from "./Historico";
 import axios from "axios";
+import "./styles.css";
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [input, setInput] = useState("");
-  const [history, setHistory] = useState([]);
-  const messagesEndRef = useRef(null);
+export default function App() {
+  const navigate = useNavigate();
 
-  async function sendMessage() {
-    if (!input.trim()) return;
+  const [names, setNames] = useState({
+    A: localStorage.getItem("nameA") || "Usuário A",
+    B: localStorage.getItem("nameB") || "Usuário B"
+  });
 
-    try {
-      const res = await axios.post("http://127.0.0.1:8000/api/receive-message/", {
-        user_id: user,
-        text: input
-      });
+  const [user, setUser] = useState(() => {
+    const id = localStorage.getItem("activeUserId");
+    if (!id) return null;
+    return {
+      id,
+      name: localStorage.getItem(id === "A" ? "nameA" : "nameB") || (id === "A" ? "Usuário A" : "Usuário B")
+    };
+  });
 
-      setHistory(prev => [
-        ...prev,
-        { sender: user, text: input },
-        { sender: "BOT", text: res.data.bot_message.text }
-      ]);
-    } catch (error) {
-      console.error("Erro ao enviar mensagem:", error);
-    }
-
-    setInput("");
-  }
+  const [editingNames, setEditingNames] = useState(false);
+  const [chats, setChats] = useState([]);
+  const [activeChatId, setActiveChatId] = useState(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+    localStorage.setItem("nameA", names.A);
+    localStorage.setItem("nameB", names.B);
+  }, [names]);
 
-  // Tela de seleção de usuário
-  if (!user) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 80, fontFamily: "Arial, sans-serif" }}>
-        <h2>Escolha um usuário:</h2>
-        <button
-          onClick={() => setUser("A")}
-          style={buttonStyle("#4CAF50")}
-        >
-          Entrar como A
-        </button>
-        <button
-          onClick={() => setUser("B")}
-          style={{ ...buttonStyle("#2196F3"), marginLeft: 10 }}
-        >
-          Entrar como B
-        </button>
-      </div>
-    );
+  useEffect(() => {
+    if (user) localStorage.setItem("activeUserId", user.id);
+    else localStorage.removeItem("activeUserId");
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    axios.get(`http://127.0.0.1:8000/api/chats/${user.id}/`).then(res => {
+      setChats(res.data);
+      if (res.data.length > 0) setActiveChatId(res.data[0].id);
+    });
+  }, [user]);
+
+  function saveNames() {
+    const nameA = names.A.trim();
+    const nameB = names.B.trim();
+
+    if (!nameA || !nameB) {
+      alert("Os nomes não podem ficar vazios.");
+      return;
+    }
+
+    setNames({ A: nameA, B: nameB });
+
+    setEditingNames(false);
+
+    if (user) {
+      setUser({ id: user.id, name: user.id === "A" ? nameA : nameB });
+    }
   }
 
-  // Tela principal do chat
+  async function createNewChat() {
+    if (!user) return;
+    const res = await axios.post("http://127.0.0.1:8000/api/chats/create/", { user_id: user.id });
+    const newChat = { ...res.data, history: [] };
+    setChats(prev => [...prev, newChat]);
+    setActiveChatId(newChat.id);
+  }
+
+  const homePage = editingNames ? (
+    <div style={{ textAlign: "center", marginTop: 60 }}>
+      <h2>Editar nomes</h2>
+      <input value={names.A} onChange={e => setNames(prev => ({ ...prev, A: e.target.value }))} />
+      <br />
+      <input value={names.B} onChange={e => setNames(prev => ({ ...prev, B: e.target.value }))} />
+      <br />
+      <button onClick={saveNames}>Salvar</button>
+      <button onClick={() => setEditingNames(false)}>Cancelar</button>
+    </div>
+  ) : !user ? (
+    <div style={{ textAlign: "center", marginTop: 80 }}>
+      <h2>Escolha um usuário:</h2>
+      <button onClick={() => setUser({ id: "A", name: names.A })}>Entrar como {names.A}</button>
+      <button onClick={() => setUser({ id: "B", name: names.B })} style={{ marginLeft: 10 }}>
+        Entrar como {names.B}
+      </button>
+      <div style={{ marginTop: 20 }}>
+        <button onClick={() => setEditingNames(true)}>Editar nomes</button>
+      </div>
+    </div>
+  ) : (
+    <div style={{ maxWidth: 500, margin: "50px auto" }}>
+      <button onClick={() => setUser(null)}>← Trocar usuário</button>
+      <button onClick={() => navigate("/historico")} style={{ marginLeft: 10 }}>
+        Ver Históricos
+      </button>
+      <button onClick={createNewChat} style={{ marginLeft: 10 }}>
+        Novo Chat
+      </button>
+
+      <Chat
+        user={user}
+        chats={chats}
+        activeChatId={activeChatId}
+        setChats={setChats}
+        setActiveChatId={setActiveChatId}
+      />
+    </div>
+  );
+
   return (
-    <div style={{ maxWidth: 500, margin: "50px auto", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <h2>Chat — Usuário {user}</h2>
-        <div>
-          <button onClick={() => setHistory([])} style={smallButtonStyle("#f44336")}>Sair do chat</button>
-          <button onClick={() => setUser(null)} style={{ ...smallButtonStyle("#777"), marginLeft: 5 }}>Voltar</button>
+    <div className="app-center">
+      <header className="topbar">
+        <div className="top-user">
+          Usuário ativo: <strong>{user?.name || "Nenhum"}</strong>
         </div>
-      </div>
+      </header>
 
-      <div
-        style={{
-          border: "1px solid #ccc",
-          borderRadius: 10,
-          padding: 10,
-          height: 400,
-          overflowY: "auto",
-          marginBottom: 10,
-          backgroundColor: "#f9f9f9"
-        }}
-      >
-        {history.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: msg.sender === "BOT" ? "flex-start" : "flex-end",
-              marginBottom: 10
-            }}
-          >
-            <div
-              style={{
-                maxWidth: "70%",
-                padding: "10px 15px",
-                borderRadius: 20,
-                backgroundColor: msg.sender === "BOT" ? "#eee" : "#4CAF50",
-                color: msg.sender === "BOT" ? "#000" : "#fff",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
-              }}
-            >
-              <strong style={{ fontSize: 12 }}>
-                {msg.sender === "BOT" ? "Bot" : user}
-              </strong>
-              <p style={{ margin: "5px 0 0 0", fontSize: 14 }}>{msg.text}</p>
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div style={{ display: "flex" }}>
-        <input
-          style={{
-            flex: 1,
-            padding: 10,
-            borderRadius: 20,
-            border: "1px solid #ccc",
-            outline: "none",
-            fontSize: 14
-          }}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Digite sua mensagem..."
-          onKeyDown={e => e.key === "Enter" && sendMessage()}
-        />
-        <button
-          onClick={sendMessage}
-          style={{
-            marginLeft: 10,
-            padding: "10px 20px",
-            borderRadius: 20,
-            border: "none",
-            backgroundColor: "#2196F3",
-            color: "white",
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}
-        >
-          Enviar
-        </button>
+      <div className="content">
+        <Routes>
+          <Route path="/" element={homePage} />
+          <Route
+            path="/historico"
+            element={<Historico chats={chats} setActiveChatId={setActiveChatId} />}
+          />
+        </Routes>
       </div>
     </div>
   );
 }
-
-// Estilos reutilizáveis
-const buttonStyle = (bg) => ({
-  padding: "10px 20px",
-  borderRadius: 5,
-  border: "none",
-  cursor: "pointer",
-  backgroundColor: bg,
-  color: "white",
-  fontWeight: "bold"
-});
-
-const smallButtonStyle = (bg) => ({
-  padding: "5px 10px",
-  borderRadius: 5,
-  border: "none",
-  cursor: "pointer",
-  backgroundColor: bg,
-  color: "white",
-  fontWeight: "bold",
-  fontSize: 12
-});
-
-export default App;

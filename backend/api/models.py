@@ -1,7 +1,16 @@
 from django.db import models
 
-class Message(models.Model):
+class Chat(models.Model):
     user = models.CharField(max_length=10)
+    name = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.user})"
+
+
+class Message(models.Model):
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     sender = models.CharField(
         max_length=10,
         choices=[("user", "User"), ("bot", "Bot")]

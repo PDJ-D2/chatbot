@@ -1,39 +1,75 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Message
+from .models import Chat, Message
 
 @api_view(["POST"])
-def receive_message(request):
-    user = request.data.get("user_id")  # agora é 'user', não 'user_id'
+def create_chat(request):
+    user = request.data.get("user_id")
+    total_chats = Chat.objects.filter(user=user).count()
+    name = f"Chat #{total_chats + 1}"
+    chat = Chat.objects.create(user=user, name=name)
+    return Response({
+        "id": chat.id,
+        "name": chat.name,
+        "created_at": chat.created_at
+    })
+
+@api_view(["GET"])
+def list_chats(request, user_id):
+    chats = Chat.objects.filter(user=user_id).order_by("created_at")
+    data = [
+        {
+            "id": chat.id,
+            "name": chat.name,
+            "created_at": chat.created_at,
+            "history": [
+                {
+                    "id": msg.id,
+                    "sender": msg.sender,
+                    "text": msg.text,
+                    "created_at": msg.created_at,
+                    "reply_to": msg.reply_to.id if msg.reply_to else None
+                }
+                for msg in chat.messages.all().order_by("created_at")
+            ]
+        }
+        for chat in chats
+    ]
+    return Response(data)
+
+@api_view(["POST"])
+def send_message(request):
+    chat_id = request.data.get("chat_id")
+    user = request.data.get("user_id")
+    name = request.data.get("user_name")
     text = request.data.get("text")
 
-    if not text:
-        return Response({"error": "Texto vazio"}, status=400)
+    chat = Chat.objects.get(id=chat_id)
 
-    # 1) Salva a mensagem do usuário
     user_msg = Message.objects.create(
-        user=user,  # <-- aqui mudou
-        sender="user",
+        chat=chat,
+        sender=name,
         text=text
     )
 
-    # 2) Gera resposta do bot (exemplo simples)
-    bot_text = f"Você disse: {text}"
+    if user == "A":
+        bot_text = f"Olá! Obrigado pelo contato, {name}. Em breve nós te retornaremos."
+    else:
+        bot_text = f"Oi! Agradecemos por seu contato, {name}. Responderemos a sua mensagem em breve."
 
-    # 3) Salva a resposta vinculada ao user_msg via reply_to
     bot_msg = Message.objects.create(
-        user=user,  # <-- aqui também
-        sender="bot",
+        chat=chat,
+        sender="Bot",
         text=bot_text,
         reply_to=user_msg
     )
 
-    # 4) Retorna os dados pro front
     return Response({
         "user_message": {
             "id": user_msg.id,
             "text": user_msg.text,
-            "created_at": user_msg.created_at
+            "created_at": user_msg.created_at,
+            "sender": user_msg.sender
         },
         "bot_message": {
             "id": bot_msg.id,
