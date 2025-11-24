@@ -1,30 +1,28 @@
 # Chatbot de Atendimento Simulado
 
-Este é um protótipo fullstack de um sistema de chat criado com **Python, Django + Django REST Framework** no backend e **React + Vite** no frontend.  
-Ele simula um atendimento entre dois usuários (“Usuário A” e “Usuário B”) e um bot que responde automaticamente.
+Este é um protótipo fullstack de um sistema de chat criado com **Python + Django REST Framework** no backend e **React + Vite** no frontend.  
+O sistema simula dois usuários (“Usuário A” e “Usuário B”) enviando mensagens a um bot que responde automaticamente.
 
-Este README explica como **baixar**, **instalar**, **configurar** e **rodar tudo localmente**, além de descrever resumidamente as decisões técnicas usadas no projeto.
+Este README explica como baixar, instalar, configurar e rodar o projeto localmente.
 
 ---
 
 # Como rodar o projeto localmente
 
-## 1. Faça o download do projeto
+## 1. Baixar o projeto
 
-Se estiver usando Git:
+### Usando Git
 
-```bash
-git clone <URL-do-seu-repositório>
-cd projeto
-````
+git clone <URL-do-repositório>
+cd chatbot
 
-Se estiver baixando ZIP:
+### Baixando ZIP pelo GitHub
 
-* Clique em **Download ZIP**
-* Extraia a pasta
-* Entre nela pelo terminal/cmd
+1. Clique em **Download ZIP**
+2. Extraia o conteúdo
+3. Abra um terminal dentro da pasta extraída
 
-Dentro dela você terá:
+A estrutura será:
 
 ```
 /backend
@@ -35,198 +33,195 @@ Dentro dela você terá:
 
 # BACKEND (Django)
 
-## 2.1 — Entre na pasta do backend
+## 2.1 — Acessar a pasta do backend
 
-```bash
 cd backend
 ```
 
----
-
-## 2.2 — Criar o ambiente virtual (venv)
+## 2.2 — Criar e ativar o ambiente virtual (venv)
 
 ### Windows (PowerShell)
 
-```powershell
+ 
 python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-### Windows (CMD)
-
-```cmd
-python -m venv venv
-venv\Scripts\activate.bat
+.\venv\Scripts\activate
 ```
 
 ### Linux / macOS
 
-```bash
+ 
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-Se o ambiente estiver ativo, o terminal ficará assim:
+Se estiver correto, o terminal exibirá algo assim:
 
 ```
-(venv) C:\seu\projeto\backend>
+(venv) C:\caminho\chatbot\backend>
 ```
-
----
 
 ## 2.3 — Instalar dependências do backend
 
-```bash
-pip install django djangorestframework django-cors-headers
+ 
+pip install django djangorestframework django-cors-headers django-extensions
 ```
 
----
+## 2.4 — Criar e aplicar migrações
 
-## 2.4 — Aplicar migrações
-
-```bash
+ 
 python manage.py makemigrations
 python manage.py migrate
 ```
 
----
-
 ## 2.5 — Rodar o backend
 
-```bash
+ 
 python manage.py runserver
 ```
 
 O backend estará disponível em:
 
-**[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+```
+http://127.0.0.1:8000
+```
+
+**Observação:** ao rodar o backend, o terminal ficará dedicado ao servidor.
+Para rodar o frontend, será necessário abrir outro terminal.
 
 ---
 
 # FRONTEND (React + Vite)
 
-## 3.1 — Entre na pasta do frontend
+## 3.1 — Abrir outro terminal e acessar a pasta do frontend
 
-```bash
-cd ../frontend
+Ao abrir um novo PowerShell, ele inicia em:
+
+```
+C:\Users\User>
 ```
 
----
+Acesse a pasta do frontend (exemplo):
 
-## 3.2 — Instalar as dependências do frontend
+ 
+cd C:\caminho\chatbot\frontend
+```
 
-```bash
+(Ajuste o caminho conforme a localização do projeto.)
+
+## 3.2 — Instalar dependências do frontend
+
+ 
 npm install
 ```
 
-Dependências instaladas automaticamente:
-
-```
-@eslint/js
-@types/react
-@types/react-dom
-@vitejs/plugin-react
-axios
-eslint
-eslint-plugin-react-hooks
-eslint-plugin-react-refresh
-globals
-react
-react-dom
-react-router-dom
-vite
-```
-
----
-
 ## 3.3 — Rodar o frontend
 
-```bash
+ 
 npm run dev
 ```
 
 O frontend estará disponível em:
 
- **[http://localhost:5173](http://localhost:5173)**
+```
+http://localhost:5173
+```
 
 ---
 
 # Como usar o sistema
 
-1. Abra o frontend (`http://localhost:5173`).
-2. Escolha **Entrar como Usuário A** ou **Usuário B**.
-3. Clique em **Novo Chat** para iniciar um novo chat (backend gera automaticamente nomes como *Chat #1*, *Chat #2*…).
-4. Envie mensagens no chat.
-5. O backend responde automaticamente com mensagens diferentes para cada usuário.
-6. A rota **/historico** exibe apenas o histórico do usuário selecionado.
+1. Acesse: `http://localhost:5173`
+2. Escolha **Usuário A** ou **Usuário B**
+3. Clique em **Novo Chat**
+4. Envie mensagens
+5. O bot responde automaticamente
+6. A página **/historico** mostra apenas os chats do usuário selecionado
 
 ---
 
-# Como foi feita a lógica do projeto
+# Decisões Técnicas do Projeto
 
-### Filtragem por usuário
+## Modelagem de Dados
 
-* Toda rota de histórico usa `Chat.objects.filter(user=user_id)`
-* Apenas chats do usuário logado aparecem.
+### Model: **Chat**
 
-### Nome automático dos chats
+* Guarda o usuário dono do chat
+* Cada novo chat recebe um nome automático:
 
-Sempre cria:
+  ```
+  Chat #1
+  Chat #2
+  Chat #3
+  ```
 
-```
-Chat #1
-Chat #2
-Chat #3
-...
-```
+  sempre por usuário, baseado na contagem atual
 
-com base na contagem **por usuário**.
+### Model: **Message**
 
-### Respostas do bot
-
-Backend retorna mensagens diferentes para User A e User B:
-
-Exemplo:
-
-* Usuário A → "Olá! Obrigado pelo contato, ... "
-* Usuário B → "Oi! Agradecemos pelo contato, ... "
+* Guarda mensagens enviadas pelo usuário e pelo bot
+* Campo `reply_to` permite encadear mensagens
+* Estrutura simples e escalável para manipulação no Django
 
 ---
 
-# Possiveis erros
+# Lógica de Negócio
 
-### 1. Backend não roda
+## Filtragem por usuário
+
+A listagem sempre retorna apenas chats pertencentes ao usuário:
+
+```python
+Chat.objects.filter(user=user_id)
+```
+
+## Nome automático dos chats
+
+Gerado dinamicamente com base na quantidade atual de chats daquele usuário.
+
+## Respostas do bot
+
+* Usuário A recebe um conjunto específico de respostas
+* Usuário B recebe outro conjunto
+
+## Gerenciamento de estado no React
+
+* O estado global dos chats fica em `App.jsx`
+* `Chat.jsx` apenas exibe e envia mensagens
+* O backend responde e o React atualiza o estado com `setChats`
+* Estrutura simples, clara e fácil de manter
+
+---
+
+# Possíveis Erros e Soluções
+
+## 1. Backend não roda
 
 Verifique se o venv está ativo:
 
 ```
-(venv) C:\projeto\backend>
+(venv) C:\cb\chatbot\backend>
 ```
 
-Se não estiver, ative com:
+Se não estiver:
 
-```powershell
-.\venv\Scripts\Activate.ps1
+ 
+.\venv\Scripts\activate
 ```
 
 ---
 
-### 2. Erro de CORS no frontend
+## 2. Erro de CORS no frontend
 
-Certifique-se de que o backend tem:
-
-No `settings.py`:
+Adicionar no `settings.py`:
 
 ```python
 INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
-    ...
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    ...
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -234,14 +229,13 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 ---
 
-### 3. Erro “405 Method Not Allowed”
+## 3. Erro “405 Method Not Allowed”
 
-Geralmente é porque a rota dinâmica `<user_id>` estava acima de `/send/`.
-
-A ordem correta no `urls.py` é:
+Verifique a ordem das rotas no `urls.py`:
 
 ```python
 path("chats/send/", send_message),
 path("chats/<str:user_id>/", list_chats),
 path("chats/create/", create_chat),
 ```
+
